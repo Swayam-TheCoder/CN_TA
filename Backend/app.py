@@ -1,96 +1,82 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import mysql.connector
-from datetime import datetime
 import os
 import mysql.connector
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        port=os.getenv("DB_PORT", 3306)
-    )
-
-def get_connection():
-    return mysql.connector.connect(**DB_CONFIG)
-# MySQL Database Configuration
-
+# Database Configuration
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'ssssss@0910@',  
-    'database': 'disaster_alerts'
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", ""),
+    "port": int(os.getenv("DB_PORT", 3306))
 }
 
-# Database Setup (auto-create table)
+# Connect to Database
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        print("✅ Connected to MySQL successfully!")
+        return conn
+    except mysql.connector.Error as err:
+        print(f"❌ Database connection failed: {err}")
+        raise
 
+# Initialize the database
 def init_db():
-    conn = mysql.connector.connect(
-        host=DB_CONFIG['host'],
-        user=DB_CONFIG['user'],
-        password=DB_CONFIG['password']
-    )
-    cur = conn.cursor()
-    cur.execute("CREATE DATABASE IF NOT EXISTS disaster_alerts")
-    conn.database = DB_CONFIG['database']
-    cur.execute("""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS alerts (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            message VARCHAR(255) NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            message VARCHAR(255),
+            location VARCHAR(100),
+            severity VARCHAR(50)
         )
     """)
     conn.commit()
-    cur.close()
+    cursor.close()
     conn.close()
+    print("✅ Database initialized successfully.")
 
-# API: Send Alert\
-@app.route('/api/send_alert', methods=['POST'])
-def send_alert():
+@app.route("/")
+def home():
+    return jsonify({"message": "Backend running successfully!"})
+
+# Endpoint to add data
+@app.route("/add", methods=["POST"])
+def add_alert():
     data = request.get_json()
-    message = data.get('message')
+    message = data.get("message")
+    location = data.get("location")
+    severity = data.get("severity")
 
-    if not message:
-        return jsonify({'success': False, 'error': 'Message required'}), 400
-
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor()
-    cur.execute("INSERT INTO alerts (message) VALUES (%s)", (message,))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO alerts (message, location, severity) VALUES (%s, %s, %s)",
+        (message, location, severity)
+    )
     conn.commit()
-    cur.close()
+    cursor.close()
     conn.close()
 
-    return jsonify({'success': True, 'message': 'Alert sent successfully'})
+    return jsonify({"status": "success", "message": "Alert added successfully!"})
 
-# API: Get All Alerts (Admin)
-@app.route('/api/alerts', methods=['GET'])
-def get_all_alerts():
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM alerts ORDER BY id DESC")
-    alerts = cur.fetchall()
-    cur.close()
+# Endpoint to get all data
+@app.route("/alerts", methods=["GET"])
+def get_alerts():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM alerts")
+    results = cursor.fetchall()
+    cursor.close()
     conn.close()
-    return jsonify(alerts)
+    return jsonify(results)
 
-# API: Get Recent Alerts (Client View)
-@app.route('/api/client_alerts', methods=['GET'])
-def get_recent_alerts():
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 5")
-    alerts = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(alerts)
-
-# Now Starting the Server
-if __name__ == '__main__':
+if __name__ == "__main__":
     init_db()
-    app.run(host='127.0.0.1', port=5030, debug=True)
+    app.run(host="0.0.0.0", port=5000)
