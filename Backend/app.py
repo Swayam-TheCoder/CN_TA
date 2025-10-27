@@ -17,6 +17,8 @@ def get_db_connection():
         port=os.getenv("DB_PORT", 3306)
     )
 
+def get_connection():
+    return mysql.connector.connect(**DB_CONFIG)
 # MySQL Database Configuration
 
 DB_CONFIG = {
