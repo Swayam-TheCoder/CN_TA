@@ -5,7 +5,7 @@ export default function AdminPanel() {
 
   const sendAlert = async () => {
     if (!message) return alert("Please enter a message!");
-    const res = await fetch("https://cnta-production.up.railway.app", {
+    const res = await fetch("http://127.0.0.1:5030/api/send_alert", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),

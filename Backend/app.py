@@ -1,88 +1,93 @@
 import os
 import mysql.connector
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
 
-# Database Configuration
+# DATABASE CONFIG (read from environment variables)
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST", "localhost"),
-    "user": os.getenv("MYSQLUSER", "root"),
-    "password": os.getenv("MYSQLPASSWORD", ""),
-    "database": os.getenv("MYSQLDATABASE", ""),
-    "port": int(os.getenv("MYSQLPORT", 3306))
+    "host": os.getenv("MYSQLHOST") or os.getenv("DB_HOST"),
+    "user": os.getenv("MYSQLUSER") or os.getenv("DB_USER"),
+    "password": os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD"),
+    "database": os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME"),
+    "port": int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT") or 3306)
 }
 
-# Connect to Database
 def get_db_connection():
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        print("Connected to MySQL successfully!")
-        return conn
-    except mysql.connector.Error as err:
-        print(f"Database connection failed: {err}")
-        raise
+    return mysql.connector.connect(**DB_CONFIG)
 
-# Initialize Database
 def init_db():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS alerts (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                message VARCHAR(255),
-                location VARCHAR(100),
-                severity VARCHAR(50)
-            )
-        """)
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("Database initialized successfully.")
-    except Exception as e:
-        print(f"Error initializing database: {e}")
+    # create database and table if not exists (safe to call on startup)
+    conn = mysql.connector.connect(
+        host=DB_CONFIG["host"],
+        user=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        port=DB_CONFIG["port"]
+    )
+    cur = conn.cursor()
+    cur.execute("CREATE DATABASE IF NOT EXISTS {}".format(DB_CONFIG["database"]))
+    conn.database = DB_CONFIG["database"]
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            message VARCHAR(255),
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("✅ DB initialized")
 
-# Routes
 @app.route("/")
 def home():
-    return jsonify({"message": "🚀 Backend running successfully on Railway!"})
+    return jsonify({"message": "Backend running"})
 
-@app.route("/add", methods=["POST"])
-def add_alert():
-    data = request.get_json()
-    message = data.get("message")
-    location = data.get("location")
-    severity = data.get("severity")
-
-    if not all([message, location, severity]):
-        return jsonify({"error": "Missing required fields"}), 400
+@app.route("/api/send_alert", methods=["POST"])
+def send_alert():
+    data = request.get_json() or {}
+    message = data.get("message", "").strip()
+    if not message:
+        return jsonify({"success": False, "error": "Message required"}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO alerts (message, location, severity) VALUES (%s, %s, %s)",
-        (message, location, severity)
-    )
+    cur = conn.cursor()
+    cur.execute("INSERT INTO alerts (message) VALUES (%s)", (message,))
     conn.commit()
-    cursor.close()
+    cur.close()
     conn.close()
 
-    return jsonify({"status": "success", "message": "Alert added successfully!"})
+    # (Optionally) emit websocket or send push here
+    return jsonify({"success": True, "message": "Alert saved"})
 
-@app.route("/alerts", methods=["GET"])
-def get_alerts():
+@app.route("/api/alerts", methods=["GET"])
+def get_all_alerts():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM alerts")
-    results = cursor.fetchall()
-    cursor.close()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM alerts ORDER BY id DESC")
+    rows = cur.fetchall()
+    cur.close()
     conn.close()
-    return jsonify(results)
+    return jsonify(rows)
 
-# Run
+@app.route("/api/client_alerts", methods=["GET"])
+def get_recent_alerts():
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 5")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(rows)
+
 if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    # Initialize DB and run on port provided by Railway (or 5030 locally)
+    try:
+        init_db()
+    except Exception as e:
+        print("Error initializing DB:", e)
+    port = int(os.getenv("PORT", 5030))
+    app.run(host="0.0.0.0", port=port)

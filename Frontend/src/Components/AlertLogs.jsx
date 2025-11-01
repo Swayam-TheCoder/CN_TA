@@ -4,7 +4,7 @@ export default function AlertLogs() {
   const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
-    fetch("https://cnta-production.up.railway.app")
+    fetch("http://127.0.0.1:5030/api/alerts")
       .then((res) => res.json())
       .then(setAlerts);
   }, []);
