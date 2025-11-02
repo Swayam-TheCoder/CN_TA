@@ -29,7 +29,7 @@ const fetchAlerts = async () => {
   return (
   <div className="max-w-2xl w-full bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-gray-900/80 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10 text-white">
     <h2 className="text-3xl font-extrabold bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent mb-4 tracking-wide">
-      📢 Live Alerts
+      Live Alerts
     </h2>
 
     <div className="space-y-4">
@@ -41,7 +41,7 @@ const fetchAlerts = async () => {
           >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-rose-300">
-                ⚠️ {a.message}
+                {a.message}
               </h3>
               <span className="text-xs text-gray-400">{a.timestamp}</span>
             </div>
@@ -49,7 +49,7 @@ const fetchAlerts = async () => {
         ))
       ) : (
         <div className="p-4 text-gray-400 text-sm italic bg-slate-800/50 rounded-lg border border-white/10 text-center">
-          No active alerts at the moment 🚫
+          No active alerts at the moment
         </div>
       )}
     </div>
