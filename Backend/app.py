@@ -84,5 +84,6 @@ def get_recent_alerts():
     return jsonify(rows)
 
 if __name__ == "__main__":
+    init_db()
     port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
