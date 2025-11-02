@@ -3,23 +3,19 @@ from flask_cors import CORS
 import mysql.connector
 from datetime import datetime
 
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# ✅ MySQL Workbench connection details
 DB_CONFIG = {
-    "host": "localhost",        # Your MySQL host
-    "user": "root",             # Your MySQL username
-    "password": "ssssss@0910@",  # 🔹 Replace with your MySQL password
-    "database": "disaster_alerts" # Database name (create in MySQL Workbench)
+    "host": "localhost",
+    "user": "root",
+    "password": "ssssss@0910@",
+    "database": "disaster_alerts"
 }
 
-# ✅ Database connection function
 def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
-# ✅ Initialize the database and table
 def init_db():
     try:
         conn = mysql.connector.connect(
@@ -40,16 +36,14 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Database initialized successfully!")
+        print("Database initialized successfully!")
     except Exception as e:
-        print("❌ Error initializing database:", e)
+        print("Error initializing database:", e)
 
-# ✅ Test route
 @app.route("/")
 def home():
-    return "✅ Flask connected successfully to MySQL!"
+    return "Flask connected successfully to MySQL!"
 
-# ✅ POST: Send Alert
 @app.route("/api/send_alert", methods=["POST"])
 def send_alert():
     try:
@@ -70,7 +64,6 @@ def send_alert():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-# ✅ GET: All Alerts
 @app.route("/api/alerts", methods=["GET"])
 def get_all_alerts():
     conn = get_db_connection()
@@ -81,7 +74,6 @@ def get_all_alerts():
     conn.close()
     return jsonify(rows)
 
-# ✅ GET: Client (Recent Alerts)
 @app.route("/api/client_alerts", methods=["GET"])
 def get_recent_alerts():
     conn = get_db_connection()
@@ -91,8 +83,7 @@ def get_recent_alerts():
     cur.close()
     conn.close()
     return jsonify(rows)
-
-# ✅ Run Flask app
+# Main function run
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=5030, debug=True)
