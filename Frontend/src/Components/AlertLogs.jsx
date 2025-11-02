@@ -3,11 +3,11 @@ import React, { useEffect, useState } from "react";
 export default function AlertLogs() {
   const [alerts, setAlerts] = useState([]);
 
-  useEffect(() => {
-    fetch("http://127.0.0.1:5030/api/alerts")
-      .then((res) => res.json())
-      .then(setAlerts);
-  }, []);
+useEffect(() => {
+  fetch("http://127.0.0.1:5030/api/alerts")
+    .then((res) => res.json())
+    .then(setAlerts);
+}, []);
 
   return (
     <div className="max-w-3xl w-full bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10">

@@ -21,3 +21,6 @@ export default function App() {
     </div>  
   );
 }
+
+
+// http://127.0.0.1:5030/api/send_alert

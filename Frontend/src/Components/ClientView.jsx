@@ -4,11 +4,11 @@ export default function ClientView() {
   const [alerts, setAlerts] = useState([]);
   const [timer, setTimer] = useState(5);
 
-  const fetchAlerts = async () => {
-    const res = await fetch("http://127.0.0.1:5030/api/client_alerts");
-    const data = await res.json();
-    setAlerts(data);
-  };
+const fetchAlerts = async () => {
+  const res = await fetch("http://127.0.0.1:5030/api/client_alerts");
+  const data = await res.json();
+  setAlerts(data);
+};
 
   useEffect(() => {
     fetchAlerts();

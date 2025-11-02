@@ -1,68 +1,76 @@
-import os
-import mysql.connector
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import mysql.connector
 from datetime import datetime
 
+# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# DATABASE CONFIG (read from environment variables)
+# ✅ MySQL Workbench connection details
 DB_CONFIG = {
-    "host": os.getenv("MYSQLHOST") or os.getenv("DB_HOST"),
-    "user": os.getenv("MYSQLUSER") or os.getenv("DB_USER"),
-    "password": os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD"),
-    "database": os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME"),
-    "port": int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT") or 3306)
+    "host": "localhost",        # Your MySQL host
+    "user": "root",             # Your MySQL username
+    "password": "ssssss@0910@",  # 🔹 Replace with your MySQL password
+    "database": "disaster_alerts" # Database name (create in MySQL Workbench)
 }
 
+# ✅ Database connection function
 def get_db_connection():
     return mysql.connector.connect(**DB_CONFIG)
 
+# ✅ Initialize the database and table
 def init_db():
-    # create database and table if not exists (safe to call on startup)
-    conn = mysql.connector.connect(
-        host=DB_CONFIG["host"],
-        user=DB_CONFIG["user"],
-        password=DB_CONFIG["password"],
-        port=DB_CONFIG["port"]
-    )
-    cur = conn.cursor()
-    cur.execute("CREATE DATABASE IF NOT EXISTS {}".format(DB_CONFIG["database"]))
-    conn.database = DB_CONFIG["database"]
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS alerts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            message VARCHAR(255),
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    try:
+        conn = mysql.connector.connect(
+            host=DB_CONFIG["host"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"]
         )
-    """)
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("✅ DB initialized")
+        cur = conn.cursor()
+        cur.execute("CREATE DATABASE IF NOT EXISTS disaster_alerts")
+        conn.database = DB_CONFIG["database"]
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                message VARCHAR(255) NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+        print("✅ Database initialized successfully!")
+    except Exception as e:
+        print("❌ Error initializing database:", e)
 
+# ✅ Test route
 @app.route("/")
 def home():
-    return jsonify({"message": "Backend running"})
+    return "✅ Flask connected successfully to MySQL!"
 
+# ✅ POST: Send Alert
 @app.route("/api/send_alert", methods=["POST"])
 def send_alert():
-    data = request.get_json() or {}
-    message = data.get("message", "").strip()
-    if not message:
-        return jsonify({"success": False, "error": "Message required"}), 400
+    try:
+        data = request.get_json()
+        message = data.get("message")
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO alerts (message) VALUES (%s)", (message,))
-    conn.commit()
-    cur.close()
-    conn.close()
+        if not message:
+            return jsonify({"success": False, "error": "Message required"}), 400
 
-    # (Optionally) emit websocket or send push here
-    return jsonify({"success": True, "message": "Alert saved"})
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO alerts (message) VALUES (%s)", (message,))
+        conn.commit()
+        cur.close()
+        conn.close()
 
+        return jsonify({"success": True, "message": "Alert sent successfully!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ✅ GET: All Alerts
 @app.route("/api/alerts", methods=["GET"])
 def get_all_alerts():
     conn = get_db_connection()
@@ -73,6 +81,7 @@ def get_all_alerts():
     conn.close()
     return jsonify(rows)
 
+# ✅ GET: Client (Recent Alerts)
 @app.route("/api/client_alerts", methods=["GET"])
 def get_recent_alerts():
     conn = get_db_connection()
@@ -83,7 +92,7 @@ def get_recent_alerts():
     conn.close()
     return jsonify(rows)
 
+# ✅ Run Flask app
 if __name__ == "__main__":
     init_db()
-    port = int(os.getenv("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5030, debug=True)
