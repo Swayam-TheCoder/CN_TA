@@ -84,10 +84,5 @@ def get_recent_alerts():
     return jsonify(rows)
 
 if __name__ == "__main__":
-    # Initialize DB and run on port provided by Railway (or 5030 locally)
-    try:
-        init_db()
-    except Exception as e:
-        print("Error initializing DB:", e)
-    port = int(os.getenv("PORT", 5030))
+    port = int(os.getenv("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
